@@ -67,8 +67,8 @@
 #         self.user_id = user_id or st.session_state.get('user_id', 'default')
         
 #         # Azure AI Document Intelligence credentials
-#         self.document_key = os.environ.get('key_document')
-#         self.document_endpoint = os.environ.get('end_point_document')
+#         self.document_key = os.environ.get('KEY_DOCUMENT')
+#         self.document_endpoint = os.environ.get('END_POINT_DOCUMENT')
         
 #         if not all([self.document_key, self.document_endpoint]):
 #             raise ValueError("Azure Document Intelligence credentials not properly configured")
@@ -255,8 +255,8 @@ class ClientPool:
     """Pool of Azure Document Analysis Clients"""
     def __init__(self, pool_size: int = 5):
         load_dotenv()
-        self.document_key = os.environ.get('key_document')
-        self.document_endpoint = os.environ.get('end_point_document')
+        self.document_key = os.environ.get('KEY_DOCUMENT')
+        self.document_endpoint = os.environ.get('END_POINT_DOCUMENT')
         
         if not all([self.document_key, self.document_endpoint]):
             raise ValueError("Azure Document Intelligence credentials not properly configured")
