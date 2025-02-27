@@ -1,4 +1,3 @@
-
 #styles.py
 
 def get_user_custom_css(user_id=None):

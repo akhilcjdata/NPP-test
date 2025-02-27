@@ -193,9 +193,9 @@ PLAN_ADMIN_PROMPTS = {
 
 
     'restatement_date': """
-    Looking and extract for This restatement (month) (day).
-    This restatement date comes after text 'This restatement (month) (day)'
-    Extract and Return only the date in MM/DD format.
+    Looking and extract for This restatement (month) (day) (year).
+    This restatement date comes after text 'This restatement (month) (day) (year)'
+    Extract and Return only the date in MM/DD/YYYY format.
     If not found, return 'None'.
     The text content is: {document_content}
     """,
@@ -284,31 +284,11 @@ PLAN_ADMIN_PROMPTS = {
     """,
 
 
-    # 'administrator': """
-    # Extract who will be the Administrator.
-    # If Employer, return 'Employer'.
-    # If Other, return the specified name.
-    # If not found, return 'None'.
-    # The text content is: {document_content}
-    # """,
-
-    'plan_administrator': """
-    Looking for Plan Administrator details after "Administrator shall be:"
-    Return only the selected items without any additional text: the selected items must be given before each option like this ☒ selected:
-
-    'Employer, using Employer\'s address and phone' - if this option shows '☒ selected'
-
-    If 'Other:' shows '☒ selected':
-    'Other: {name}' - if name is specified
-    And include selected address option:
-    'Use Employer\'s address and phone' - if this option shows '☒ selected'
-    'Use address and phone below: Street: {street}, City: {city}, State: {state}, Zip: {zip}, Telephone: {phone}' - if this option shows '☒ selected'
-
-    'none' - if all options show '☐ unselected'
-    Check for:
-    - '☒ selected' or '☐ unselected' before each option
-    - Name if Other selected
-    - Complete address and phone details if specified address option selected
+    'administrator': """
+    Extract who will be the Administrator.
+    If Employer, return 'Employer'.
+    If Other, return the specified name.
+    If not found, return 'NA'.
     The text content is: {document_content}
     """
 }
@@ -1031,7 +1011,7 @@ ELIGIBILITY_TYPES_PROMPTS = {
     The text content is: {document_content}
     """,
 
-    'additional_one_time_entry_date_ps_mp': """
+    '38.10 additional_one_time_entry_date_ps_mp': """
     Looking for information about additional one-time entry dates for Profit Sharing or Money Purchase Contributions after "AND, should there be an additional one-time entry date:" 
 
     Return the text of selected options, combined with commas if multiple selected:
@@ -2366,24 +2346,22 @@ SAFE_HARBOR_PROMPTS = {
 
 MATCHING_CONTRIBUTION_PROMPTS = {
 
-# 'employer_matching_contribution': """
-#     Look for Employer Matching Contributions (other than 401(k) Safe Harbor Matching Contributions).
-#     Return only one of the following values without any additional text:
-#     'Discretionary matching amount' - if 'Discretionary matching amount' shows '☒ selected'
-#     'Fixed matching {X}%' - if 'Fixed matching contribution equal to' shows '☒ selected' (replace {X} with specified percentage)
-#     'Fixed matching {X}% plus Discretionary' - if 'Fixed matching contribution' and 'Discretionary matching amount' both show '☒ selected'
-#     'Fixed matching {X}% plus N/A' - if 'Fixed matching contribution' and 'N/A' both show '☒ selected'
-#     'Discretionary percentage per tier' - if 'matching contribution equal to a discretionary percentage' shows '☒ selected'
-#     'Fixed percentage per tier' - if 'Fixed matching contribution equal to a uniform percentage of each tier' shows '☒ selected'
-#     'Service based matching' - if 'matching contributions equal to a uniform percentage based on Years' shows '☒ selected'
-#     'Service based matching (Vesting)' - if service based matching AND 'vesting' show '☒ selected'
-#     'Service based matching (Eligibility)' - if service based matching AND 'eligibility' show '☒ selected'
-#     'None' - if all options show '☐ unselected'
-#     Check for:
-#     - '☒ selected' or '☐ unselected' before each option
-#     - Check sub-options only if main option is selected
-#     The text content is: {document_content}
-#     """,
+'employer_matching_contribution': """
+Look for which type of Employer Matching Contribution (other than 401(k) Safe Harbor Matching Contributions) is selected.
+Return only one of the following values without any additional text:
+'discretionary_flexible' - if option a.1 is selected (flexible discretionary match)
+'discretionary_rigid_no_notice' - if option a.2 is selected (rigid match without notice)
+'discretionary_rigid_with_notice' - if option a.3 is selected (rigid match with potential notice)
+'fixed_plus_none' - if option b is selected with b.1 (fixed percentage plus no additional)
+'fixed_plus_flexible' - if option b is selected with b.2.a (fixed percentage plus flexible discretionary)
+'fixed_plus_rigid_no_notice' - if option b is selected with b.2.b (fixed percentage plus rigid without notice)
+'fixed_plus_rigid_with_notice' - if option b is selected with b.2.c (fixed percentage plus rigid with notice)
+'discretionary_tiered' - if option c is selected (discretionary percentage of tiers)
+'fixed_tiered' - if option d is selected (fixed percentage of tiers)
+'service_based' - if option e is selected (based on years of service)
+'none' - if no option is selected
+The text content is: {document_content},
+""",
 
 'elective_deferrals_match_limit': """
 Look for how elective deferrals are taken into account for matching contributions.
@@ -3790,9 +3768,11 @@ The text content is: {document_content}
 }
 
 
+
+
 PARTICIPATING_EMPLOYER_PROMPTS = {
 
-    'participating_employers': """
+    '165.0 participating_employers': """
     Look for whether there are participating employers to be included by checking:
     1. For main Yes/No options: Check for 'selected' or 'unselected' after each option
     2. If Yes is selected, check for additional options with '☒ selected ' or '☐ unselected'
@@ -3810,7 +3790,7 @@ PARTICIPATING_EMPLOYER_PROMPTS = {
     The text content is: {document_content}
     """,
 
-    'participation_agreement_signing': """
+    '165.5 participation_agreement_signing': """
     Look for E-Sign. Select the option below if the Participation Agreements will be signed electronically (i.e., using an e-signature) (leave blank if not 
     applicable) by checking for '☒ selected ' or '☐ unselected'.
 
@@ -3823,12 +3803,12 @@ PARTICIPATING_EMPLOYER_PROMPTS = {
     The text content is: {document_content}
     """,
 
-    'participation_agreement_presentation': """
+    '165.6 participation_agreement_presentation': """
     Look for Presentation. Select the option below if each participation agreement shall be its own separate file (maximum 5). If selected, the first five 
     forms will print as separate files; forms for employers 6 to 20 will be in one combined file by checking for '☒ selected ' or '☐ unselected'.
 
     Return only one of the following values without any additional text:
-    'Participation Agreements will be in a separate file' - if "Participation Agreements will be in a separate file" option shows '☒ selected '
+    'Participation Agreements will be in a separate file' - if option shows '☒ selected '
     'none' - if option shows '☐ unselected'
 
     Check for:
@@ -4110,7 +4090,7 @@ Check for:
 The text content is: {document_content}
 """,
 
-'181.9 safe_harbor_amendment_duration': """
+'safe_harbor_amendment_duration': """
 Look for how long the amendment's provisions will remain in effect by checking for '☒ selected ' or '☐ unselected' before each option.
 
 Return only one of the following values without any additional text:
@@ -4241,7 +4221,7 @@ The text content is: {document_content}
 """,
 
 
-'rafting_preferences': """
+'drafting_preferences': """
 Look for which drafting preference is selected by checking for '☒ selected ' or '☐ unselected' before each option.
 
 Return only one of the following values without any additional text:
