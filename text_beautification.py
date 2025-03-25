@@ -1,5 +1,4 @@
-#text_beautification.py
-
+#text_beautification____________
 import re
 import logging
 from typing import List, Optional, Dict, Tuple
@@ -59,6 +58,11 @@ class TextBeautifier:
             'simple_field': r'_{3,}',  # For simple underscored fields
             'option': r'([○●☐☒])\s*([a-z]\.)\s*(.*?)(?=(?:[○●☐☒]|\n|$))'
         }
+        
+        # Address field patterns - added for processing address fields in curly brackets
+        self.address_fields = [
+            "state", "street", "city", "phone", "zip", "ein"
+        ]
 
     
     def fix_broken_words(self, text: str) -> str:
@@ -68,13 +72,26 @@ class TextBeautifier:
         # Handle cases with punctuation
         text = re.sub(r'([a-z])\s*o\s*([.,;])\s*([a-z])', r'\1o\2\3', text, flags=re.IGNORECASE)
         return text
-
+    
+    def process_address_fields(self, text: str) -> str:
+        """Process address fields in curly brackets and add colon"""
+        # Create a pattern that matches any of the address fields in curly brackets
+        pattern = r'\(({})\)'.format('|'.join(self.address_fields))
+        
+        def replace_address_field(match):
+            field = match.group(1)
+            return field.capitalize() + ": "
+        
+        return re.sub(pattern, replace_address_field, text, flags=re.IGNORECASE)
 
 
     def standardize_selection_markers(self, text: str) -> str:
         """Enhanced selection marker standardization"""
         # First fix any broken words
         text = self.fix_broken_words(text)
+        
+        # Process address fields in curly brackets
+        text = self.process_address_fields(text)
         
         # Handle all types of markers
         for old, new in self.replacements:
@@ -178,6 +195,9 @@ class TextBeautifier:
             text = text.replace("(one)", "")
             text = text.replace(":un:", "")
             
+            # Process address fields
+            text = self.process_address_fields(text)
+            
             # Process markers and structure
             text = self.standardize_selection_markers(text)
             text = self.process_question_structure(text)
@@ -279,9 +299,47 @@ class TextBeautifier:
                 prev_line_empty = False
             
             result = '\n'.join(formatted_lines)
-            print('---',result)
+            
+            # Print the result to console for debugging
+            #print("--- Result from beautify_text ---")
+            #print(result[:200] + "..." if len(result) > 200 else result)
+            
+            # Write to file with safer approach
+            try:
+                # Create a safe version for writing
+                safe_result = ""
+                for char in result:
+                    if ord(char) < 128:  # ASCII only
+                        safe_result += char
+                    else:
+                        # Replace special characters
+                        if char == '☐':
+                            safe_result += "[UNCHECKED]"
+                        elif char == '☒':
+                            safe_result += "[CHECKED]"
+                        else:
+                            safe_result += "?"
+                
+                # Write the full text to file 
+                # with open('output_test.txt', 'w', encoding='utf-8') as file:
+                #     file.write(safe_result)
+                #     file.flush()
+                
+                # print(f"Successfully wrote {len(safe_result)} characters to output_test.txt")
+                
+                # # Also save with different encoding as backup
+                # with open('output_backup.txt', 'a', encoding='cp1252', errors='replace') as file:
+                #     file.write(result)
+                #     file.flush()
+                
+                # print(f"Also wrote backup file with Windows encoding")
+                
+            except Exception as file_error:
+                print(f"Error writing to file: {str(file_error)}")
+            
             return result
             
         except Exception as e:
             logging.error(f"Error in beautify_text: {str(e)}")
-            return f"Error beautifying text: {str(e)}"
+            print(f"Error in beautify_text: {str(e)}")
+            return f"Error beautifying text: {str(e)}"   

@@ -30,6 +30,7 @@ from typing import Dict, Optional, Union, List, Tuple, Any
 import concurrent.futures
 import hashlib
 import gc
+from direct_extractor import DirectInfoExtractor
 
 # Configure logging
 logging.basicConfig(
@@ -189,6 +190,7 @@ class PDFProcessor:
     
     def __init__(self, user_id: Optional[str] = None):
         self.user_id = user_id or str(uuid.uuid4())
+        self.direct_extractor = DirectInfoExtractor()
         
         # Increment instance counter
         with PDFProcessor._instance_lock:
@@ -458,6 +460,8 @@ class PDFProcessor:
             logger.error(f"Error processing field {field} in section {section_key}: {str(e)}")
             return field, {}
 
+
+
     def process_files_simultaneously(self, ppa_file, cycle3_file):
         """Process both files simultaneously with multi-threading and caching"""
         if not self._processing_queue.add_job(self.user_id, 'pdf_processing'):
@@ -541,28 +545,93 @@ class PDFProcessor:
                     # Get corresponding sections
                     ppa_section = next(
                         (text for key, text in ppa_sections.items() 
-                         if SECTIONS[key]["name"] == SECTIONS[section_key]["name"]), 
+                        if SECTIONS[key]["name"] == SECTIONS[section_key]["name"]), 
                         None
                     )
                     cycle3_section = next(
                         (text for key, text in cycle3_sections.items() 
-                         if SECTIONS[key]["name"] == SECTIONS[section_key]["name"]), 
+                        if SECTIONS[key]["name"] == SECTIONS[section_key]["name"]), 
                         None
                     )
                     
-                    if ppa_section and cycle3_section:
-                        results['ppa'][section_key] = {}
-                        results['cycle3'][section_key] = {}
+                    # Special handling for employer_info section - use direct extraction
+                    if section_key == 'employer_info' and ppa_section and cycle3_section:
+                        # Use direct extraction for employer info
+                        ppa_employer_info = self.direct_extractor.extract_employer_info(ppa_section)
+                        cycle3_employer_info = self.direct_extractor.extract_employer_info(cycle3_section)
                         
+                        # Create formatted results for display
+                        results['ppa'][section_key] = {
+                            'employer_name': ppa_employer_info['employer_name'],
+                            'street': ppa_employer_info['street'],
+                            'city': ppa_employer_info['city'],
+                            'state': ppa_employer_info['state'],
+                            'zip': ppa_employer_info['zip'],
+                            'phone': ppa_employer_info['phone'],
+                            'ein': ppa_employer_info['ein'],
+                            'fiscal_year_end': ppa_employer_info['fiscal_year_end']
+
+                        }
+                        
+                        results['cycle3'][section_key] = {
+                            'employer_name': cycle3_employer_info['employer_name'],
+                            'street': cycle3_employer_info['street'],
+                            'city': cycle3_employer_info['city'],
+                            'state': cycle3_employer_info['state'],
+                            'zip': cycle3_employer_info['zip'],
+                            'phone': cycle3_employer_info['phone'],
+                            'ein': cycle3_employer_info['ein'],
+                            'fiscal_year_end': ppa_employer_info['fiscal_year_end']
+                        }
+                        
+                        # Update progress
+                        progress_pct = int((section_index + 1) / len(section_prompts) * 100)
+                        progress_placeholder.progress(min(progress_pct, 100))
+                        
+                        # Skip the regular processing for this section
+                        continue
+                    
+                    # Special handling for plan_admin section - use direct extraction for dates
+                    if section_key == 'plan_admin' and ppa_section and cycle3_section:
+                        # Extract dates directly from both documents
+                        ppa_effective_date = self.direct_extractor.extract_effective_date(ppa_section)
+                        cycle3_effective_date = self.direct_extractor.extract_effective_date(cycle3_section)
+                        # results['ppa'][section_key]['restatement_date'] = ppa_effective_date.get('restatement_date', 'NA')
+                        # results['cycle3'][section_key]['restatement_date'] = cycle3_effective_date.get('restatement_date', 'NA')
+                        
+                        ppa_plan_year_dates = self.direct_extractor.extract_plan_year_dates(ppa_section)
+                        cycle3_plan_year_dates = self.direct_extractor.extract_plan_year_dates(cycle3_section)
+                        
+                        # Initialize section dictionaries if they don't exist
+                        if section_key not in results['ppa']:
+                            results['ppa'][section_key] = {}
+                        if section_key not in results['cycle3']:
+                            results['cycle3'][section_key] = {}
+                        
+                        # Add the directly extracted date fields
+                        results['ppa'][section_key]['effective_date'] = ppa_effective_date.get('effective_date', 'NA')
+                        results['cycle3'][section_key]['effective_date'] = cycle3_effective_date.get('effective_date', 'NA')
+                        results['ppa'][section_key]['restatement_date'] = ppa_effective_date.get('restatement_date', 'NA')
+                        results['cycle3'][section_key]['restatement_date'] = cycle3_effective_date.get('restatement_date', 'NA')
+                        
+                        results['ppa'][section_key]['plan_year_dates'] = ppa_plan_year_dates.get('plan_year_dates', 'NA')
+                        results['cycle3'][section_key]['plan_year_dates'] = cycle3_plan_year_dates.get('plan_year_dates', 'NA')
+                        
+                        # Continue with regular processing for other fields in this section,
+                        # but remove the fields we've already processed from the prompts
+                        modified_prompts = {k: v for k, v in prompts.items() 
+                                        if k not in ['initial_effective_date', 'plan_year_dates']}
+                        
+                        # Process other fields in the section using Azure OpenAI
                         # Prepare tasks for parallel processing
                         tasks = []
-                        for field, base_prompt in prompts.items():
+                        for field, base_prompt in modified_prompts.items():
                             tasks.append((section_key, field, base_prompt, ppa_section, cycle3_section))
                         
                         # Process in parallel
                         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                             future_to_field = {executor.submit(self._process_field_comparison, task): task[1] 
-                                             for task in tasks}
+                                            for task in tasks}
                             
                             completed = 0
                             for future in concurrent.futures.as_completed(future_to_field):
@@ -580,7 +649,43 @@ class PDFProcessor:
                                 # Update progress
                                 completed += 1
                                 progress_pct = int((section_index/len(section_prompts) + 
-                                                  completed/(len(prompts) * len(section_prompts))) * 100)
+                                                completed/(len(modified_prompts) * len(section_prompts))) * 100)
+                                progress_placeholder.progress(min(progress_pct, 100))
+                        
+                        # Skip the regular processing for this section since we've handled it
+                        continue
+                    
+                    if ppa_section and cycle3_section:
+                        results['ppa'][section_key] = {}
+                        results['cycle3'][section_key] = {}
+                        
+                        # Prepare tasks for parallel processing
+                        tasks = []
+                        for field, base_prompt in prompts.items():
+                            tasks.append((section_key, field, base_prompt, ppa_section, cycle3_section))
+                        
+                        # Process in parallel
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                            future_to_field = {executor.submit(self._process_field_comparison, task): task[1] 
+                                            for task in tasks}
+                            
+                            completed = 0
+                            for future in concurrent.futures.as_completed(future_to_field):
+                                field = future_to_field[future]
+                                try:
+                                    processed_field, result = future.result()
+                                    if result:
+                                        if 'ppa' in result:
+                                            results['ppa'][section_key][processed_field] = result['ppa']
+                                        if 'cycle3' in result:
+                                            results['cycle3'][section_key][processed_field] = result['cycle3']
+                                except Exception as e:
+                                    logger.error(f"Error processing field {field}: {str(e)}")
+                                
+                                # Update progress
+                                completed += 1
+                                progress_pct = int((section_index/len(section_prompts) + 
+                                                completed/(len(prompts) * len(section_prompts))) * 100)
                                 progress_placeholder.progress(min(progress_pct, 100))
                 
                 except Exception as e:

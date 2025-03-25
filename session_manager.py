@@ -1,3 +1,5 @@
+#session_manager.py
+
 from typing import Dict, Optional
 from threading import Lock
 import logging

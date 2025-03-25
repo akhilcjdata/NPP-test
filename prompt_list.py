@@ -70,8 +70,8 @@ EMPLOYER_INFO_PROMPTS = {
     """,
     
     'employer_phone': """
-    Extract the Employer's telephone number.
-    Return only the phone number without any additional text.
+    Extract the Employer's telephone number or phone number.
+    Return only the telephone number or phone number without any additional text.
     If not found, return 'NA'.
     The text content is: {document_content}
     """,
@@ -188,15 +188,6 @@ PLAN_ADMIN_PROMPTS = {
     Check for:
     - Date appearing after 'Initial Effective Date'
     - Ensure day and year in correct format
-    The text content is: {document_content}
-    """,
-
-
-    'restatement_date': """
-    Looking and extract for This restatement (month) (day) (year).
-    This restatement date comes after text 'This restatement (month) (day) (year)'
-    Extract and Return only the date in MM/DD/YYYY format.
-    If not found, return 'None'.
     The text content is: {document_content}
     """,
 

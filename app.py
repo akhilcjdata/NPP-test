@@ -1,4 +1,3 @@
-
 # app.py
 
 import streamlit as st
@@ -14,6 +13,50 @@ from threading import Lock
 import logging
 from datetime import datetime
 from typing import Dict, Optional
+import logging
+import sys
+import io
+
+from warning_suppressor import patch_streamlit_warnings, silence_warnings
+
+# Try patching warnings
+try:
+    patch_streamlit_warnings()
+except Exception:
+    # Fallback to more aggressive warning suppression
+    silence_warnings()
+
+# Combined filter to suppress all unwanted log messages
+class CombinedLogFilter(logging.Filter):
+    def filter(self, record):
+        # Filter out ScriptRunContext warnings
+        if "missing ScriptRunContext" in record.getMessage():
+            return False
+            
+        # Filter out Azure request/response logs
+        if any(phrase in record.getMessage() for phrase in [
+            "Request URL:", 
+            "Request headers:", 
+            "Response headers:", 
+            "Request method:", 
+            "Response status:",
+            "Content-Type",
+            "HTTP Request:"
+        ]):
+            return False
+            
+        return True
+
+# Configure root logger - only add the filter once
+root_logger = logging.getLogger()
+root_logger.addFilter(CombinedLogFilter())
+
+# Set specific loggers to ERROR level to suppress INFO messages
+logging.getLogger("azure").setLevel(logging.ERROR)
+logging.getLogger("httpx").setLevel(logging.ERROR)
+logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(logging.ERROR)
+logging.getLogger("streamlit").setLevel(logging.ERROR)
+
 
 class SessionState:
     _instance = None

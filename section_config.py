@@ -1,5 +1,4 @@
 
-
 #section_config.py
 SECTIONS = {
     "document_info": {
@@ -25,17 +24,24 @@ SECTIONS = {
         ],
         "end": [
             "Section: Plan Administration",
+            "Section: Plan Information",
             r"Section\s*[:|-]\s*Plan\s+Administration",
-            r"\d+\.\d+\s+Plan\s+Administration"
+            r"Section\s*[:|-]\s*Plan\s+Information",
+            r"\d+\.\d+\s+Plan\s+Administration",
+            r"\d+\.\d+\s+Plan\s+Information"
         ]
     },
 
     "plan_admin": {
         "name": "Plan Administration",
+        "alternate_names": ["Plan Information"],
         "start": [
             "Section: Plan Administration",
+            "Section: Plan Information",
             r"Section\s*[:|-]\s*Plan\s+Administration",
-            r"\d+\.\d+\s+Plan\s+Information"
+            r"Section\s*[:|-]\s*Plan\s+Information",
+            r"\d+\.\d+\s+Plan\s+Information",
+            r"\d+\.\d+\s+Plan\s+Administration"
         ],
         "end": [
             "Section: Contribution Types",
