@@ -45,8 +45,11 @@ SECTIONS = {
         ],
         "end": [
             "Section: Contribution Types",
+            "Section: ELIGIBILITY REQUIREMENTS"
             r"Section\s*[:|-]\s*Contribution\s+Types",
-            r"\d+\.\d+\s+Contribution"
+            r"Section\s*[:|-]\s*ELIGIBILITY\s+REQUIREMENTS",
+            r"\d+\.\d+\s+Contribution",
+            r"\d+\.\d+\s+ELIGIBILITY"
         ]
     },
 

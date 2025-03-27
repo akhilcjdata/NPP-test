@@ -9,6 +9,7 @@ from threading import Lock
 import logging
 from datetime import datetime
 import time
+import re
 
 class ExtractionTracker:
     def __init__(self):
@@ -89,6 +90,8 @@ class DocumentSectionExtractor:
         st.session_state[self.rate_limit_key]['calls_this_minute'] += 1
         return True
     
+    
+
     def find_end_position(self, text: str, end_marker: Union[str, List[str]], start_index: int) -> int:
         """Find the earliest end position from multiple possible end markers"""
         try:
@@ -135,7 +138,7 @@ class DocumentSectionExtractor:
             return -1
 
     
-
+        
     def extract_section(self, text: str, section_key: str) -> Optional[str]:
         """Extract and beautify a specific section with rate limiting and tracking"""
         try:
@@ -157,52 +160,63 @@ class DocumentSectionExtractor:
 
             # Convert text to lowercase for case-insensitive search
             text_lower = text.lower()
-
-            # Try each start marker
+            
+            # Find all start markers and their positions
+            start_positions = []
+            
             for start_marker in start_markers:
-                start_index = -1
-                
                 # Try regex pattern matching first
                 if isinstance(start_marker, str) and start_marker.startswith(r"\d"):
                     try:
                         pattern = re.compile(start_marker, re.IGNORECASE)
                         match = pattern.search(text)
                         if match:
-                            start_index = match.start()
+                            start_positions.append((match.start(), len(match.group(0))))
+                            continue
                     except Exception:
                         pass
                 
-                # If regex didn't match, try case-insensitive string search
-                if start_index == -1:
-                    start_marker_lower = start_marker.lower()
-                    start_index = text_lower.find(start_marker_lower)
+                # Try case-insensitive string search
+                start_marker_lower = start_marker.lower()
+                found_index = text_lower.find(start_marker_lower)
+                if found_index != -1:
+                    start_positions.append((found_index, len(start_marker)))
+                    continue
                     
-                    # If still not found, try without "Section:" prefix
-                    if start_index == -1 and "section:" in start_marker_lower:
-                        without_prefix = start_marker_lower.replace("section:", "").strip()
-                        start_index = text_lower.find(without_prefix)
+                # If still not found, try without "Section:" prefix
+                if "section:" in start_marker_lower:
+                    without_prefix = start_marker_lower.replace("section:", "").strip()
+                    found_index = text_lower.find(without_prefix)
+                    if found_index != -1:
+                        start_positions.append((found_index, len(without_prefix)))
+            
+            # If we found any start markers, use the earliest one
+            if start_positions:
+                # Sort by position
+                start_positions.sort(key=lambda x: x[0])
+                start_index = start_positions[0][0]
+                marker_length = start_positions[0][1]
                 
-                if start_index != -1:
-                    # Found valid start marker
-                    end_index = self.find_end_position(text, end_marker, start_index)
-                    
-                    # Extract and beautify text
-                    if end_index == -1:
-                        extracted_text = text[start_index:].strip()
-                    else:
-                        extracted_text = text[start_index:end_index].strip()
-                    
-                    beautified_text = self.beautifier.beautify_text(extracted_text)
-                    
-                    # Track successful extraction
-                    self.tracker.track_extraction(self.user_id, section_key, True)
-                    
-                    return beautified_text
-
-            # No matching start marker found
-            error_msg = f"No matching start marker found for section: {section_key}"
-            self.tracker.track_extraction(self.user_id, section_key, False, error_msg)
-            return None
+                # Find end position using the existing function
+                end_index = self.find_end_position(text, end_marker, start_index + marker_length)
+                
+                # Extract and beautify text
+                if end_index == -1:
+                    extracted_text = text[start_index:].strip()
+                else:
+                    extracted_text = text[start_index:end_index].strip()
+                
+                beautified_text = self.beautifier.beautify_text(extracted_text)
+                
+                # Track successful extraction
+                self.tracker.track_extraction(self.user_id, section_key, True)
+                
+                return beautified_text
+            else:
+                # No matching start marker found
+                error_msg = f"No matching start marker found for section: {section_key}"
+                self.tracker.track_extraction(self.user_id, section_key, False, error_msg)
+                return None
 
         except Exception as e:
             error_msg = f"Error extracting section {section_key}: {str(e)}"

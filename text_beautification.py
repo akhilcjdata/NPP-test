@@ -197,6 +197,10 @@ class TextBeautifier:
             
             # Process address fields
             text = self.process_address_fields(text)
+
+            # Replace "beginning on" with "Begins" and "ending on" with "Ends"
+            #text = re.sub(r'\bbeginning on\b', 'Begins', text, flags=re.IGNORECASE)
+            #text = re.sub(r'\bending on\b', 'Ends', text, flags=re.IGNORECASE)
             
             # Process markers and structure
             text = self.standardize_selection_markers(text)
@@ -320,7 +324,7 @@ class TextBeautifier:
                         else:
                             safe_result += "?"
                 
-                # Write the full text to file 
+                #Write the full text to file 
                 # with open('output_test.txt', 'w', encoding='utf-8') as file:
                 #     file.write(safe_result)
                 #     file.flush()

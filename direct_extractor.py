@@ -341,85 +341,81 @@ class DirectInfoExtractor:
     
 
     def extract_plan_year_dates(self, text: str) -> Dict[str, str]:
-        """Extract plan year beginning and ending dates"""
+        """
+        Extract plan year beginning and ending dates from the provided text.
+        
+        Args:
+            self: Reference to the instance of the class
+            text (str): The text containing plan year dates
+            
+        Returns:
+            Dict[str, str]: Dictionary containing 'plan_year_dates' with extracted dates
+        """
+        result = {}
         try:
-            result = {}
-            
-            # Pattern for beginning date - added patterns for (month day year)
+            # Pattern for beginning date - modified to skip dates inside parentheses
             begin_patterns = [
-                # (month day) patterns
-                r'beginning\s+on.*?\(month\s+day\).*?([A-Za-z]+\s+\d{1,2})',
-                r'Begins.*?\(month\s+day\).*?([A-Za-z]+\s+\d{1,2})',
-                
-                # (month day year) patterns
-                r'beginning\s+on.*?\(month\s+day,?\s*year\).*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})',
-                r'Begins.*?\(month\s+day,?\s*year\).*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})',
-                
-                # Other formats
-                r'beginning\s+on.*?d\.\s*\(enter\s+month\s+day,\s+year\).*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})',
-                r'beginning\s+on.*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})',
-                r'beginning\s+on\s*\(enter\s+month\s+day,\s+year.*?\)(.+?)(?:and|1\.)',
-                r'SHORT\s+PLAN\s+YEAR.*?beginning\s+on.*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})'
+                r'beginning\s+on.*?\(month\s+day\).*?([A-Za-z]+\s+\d{1,2})(?!\s*\))',
+                r'Begins.*?\(month\s+day\).*?([A-Za-z]+\s+\d{1,2})(?!\s*\))',
+                r'beginning\s+on.*?\(month\s+day,?\s*year\).*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})(?!\s*\))',
+                r'Begins.*?\(month\s+day,?\s*year\).*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})(?!\s*\))',
+                r'beginning\s+on.*?d\.\s*\(enter\s+month\s+day,\s+year\).*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})(?!\s*\))',
+                r'beginning\s+on.*?\(enter\s+month\s+day,?\s*year.*?\)(.+?)(?:and|1\.)',
+                r'SHORT\s+PLAN\s+YEAR.*?beginning\s+on.*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})(?!\s*\))'
             ]
-            
-            # Pattern for ending date - added patterns for (month day year)
+
+            # Pattern for ending date - modified to skip dates inside parentheses
             end_patterns = [
-                # (month day) patterns
-                r'ending\s+on.*?\(month\s+day\).*?([A-Za-z]+\s+\d{1,2})',
-                r'Ends.*?\(month\s+day\).*?([A-Za-z]+\s+\d{1,2})',
-                
-                # (month day year) patterns
-                r'ending\s+on.*?\(month\s+day,?\s*year\).*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})',
-                r'Ends.*?\(month\s+day,?\s*year\).*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})',
-                r'and\s+ending\s+on:.*?\(enter\s+month\s+day,\s+year\).*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})',
-                
-                # Other formats
-                r'ending\s+on.*?1\.\s*and\s+ending\s+on:.*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})',
-                r'ending\s+on.*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})',
-                r'ending\s+on:.*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})'
+                r'ending\s+on.*?\(month\s+day\).*?([A-Za-z]+\s+\d{1,2})(?!\s*\))',
+                r'Ends.*?\(month\s+day\).*?([A-Za-z]+\s+\d{1,2})(?!\s*\))',
+                r'ending\s+on.*?\(month\s+day,?\s*year\).*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})(?!\s*\))',
+                r'Ends.*?\(month\s+day,?\s*year\).*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})(?!\s*\))',
+                r'and\s+ending\s+on:.*?\(enter\s+month\s+day,\s+year\).*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})(?!\s*\))',
+                r'ending\s+on.*?1\.\s*and\s+ending\s+on:.*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})(?!\s*\))',
+                r'ending\s+on:.*?([A-Za-z]+\s+\d{1,2},?\s*\d{4})(?!\s*\))'
             ]
-            
+
             # Extract begin date
             begin_date = "NA"
             for pattern in begin_patterns:
                 match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
                 if match:
                     begin_date = match.group(1).strip()
-                    # Clean up any unwanted trailing text
                     begin_date = re.sub(r'[?☒☐].*$', '', begin_date).strip()
                     break
-            
+
             # Extract end date
             end_date = "NA"
             for pattern in end_patterns:
                 match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
                 if match:
                     end_date = match.group(1).strip()
-                    # Clean up any unwanted trailing text
                     end_date = re.sub(r'[?☒☐].*$', '', end_date).strip()
                     break
-            
+
             # Special case for sections with both dates - without relying on section number
             if begin_date == "NA" and end_date == "NA":
-                # Look for SHORT PLAN YEAR section without relying on section number
-                short_plan_year_match = re.search(r'SHORT\s+PLAN\s+YEAR.*?beginning\s+on.*?ending\s+on:', text, re.IGNORECASE | re.DOTALL)
+                short_plan_year_match = re.search(
+                    r'SHORT\s+PLAN\s+YEAR.*?beginning\s+on.*?ending\s+on:', 
+                    text, 
+                    re.IGNORECASE | re.DOTALL
+                )
                 if short_plan_year_match:
                     section_text = short_plan_year_match.group(0)
-                    
-                    # Look for dates in this section (with or without year)
-                    dates = re.findall(r'([A-Za-z]+\s+\d{1,2}(?:,?\s*\d{4})?)', section_text)
+                    dates = re.findall(
+                        r'([A-Za-z]+\s+\d{1,2}(?:,?\s*\d{4})?)', 
+                        section_text
+                    )
                     if len(dates) >= 2:
                         begin_date = dates[0].strip()
                         end_date = dates[1].strip()
                     elif len(dates) == 1:
                         begin_date = dates[0].strip()
-            
-            # Format the result
+
             result['plan_year_dates'] = f"Begin Date: {begin_date}, End Date: {end_date}"
             return result
-            
         except Exception as e:
-            self.logger.error(f"Error extracting plan year dates: {str(e)}")
+            print(f"Error extracting plan year dates: {str(e)}")
             return {'plan_year_dates': 'NA'}
     
     def _cleanup_extracted_values(self, result_dict):
